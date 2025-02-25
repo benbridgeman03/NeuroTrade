@@ -11,7 +11,7 @@ namespace NeuroTrade.Data
 
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
-            options.UseSqlite("Data Source=NeuroTrade.db"); // SQLite database file
+            options.UseSqlite("Data Source=NeuroTrade.db");
         }
     }
 }
