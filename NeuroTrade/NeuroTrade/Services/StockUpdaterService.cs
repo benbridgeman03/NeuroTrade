@@ -2,13 +2,10 @@
 using Microsoft.Extensions.Hosting;
 using NeuroTrade.Data;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using NeuroTrade.Models;
+using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 
 namespace NeuroTrade.Services
@@ -17,12 +14,14 @@ namespace NeuroTrade.Services
     {
         private readonly IServiceProvider _services;
         private readonly YahooFinanceService _yahooFinanceService;
-        private readonly string[] _watchlist = { "AAPL"};
+        private readonly string[] _watchlist = { "AAPL.US" };
 
-        public StockUpdaterService(IServiceProvider Services, YahooFinanceService yahooFinanceService)
+        public StockUpdaterService(IServiceProvider services, YahooFinanceService yahooFinanceService)
         {
-            _services = Services;
+            _services = services;
             _yahooFinanceService = yahooFinanceService;
+
+            _yahooFinanceService.OnStockDataRecieved += OnStockDataReceived;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -31,56 +30,46 @@ namespace NeuroTrade.Services
 
             while (!stoppingToken.IsCancellationRequested)
             {
-
-                using (var scope = _services.CreateScope())
+                foreach (var symbol in _watchlist)
                 {
-                    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-                    foreach (var symbol in _watchlist)
-                    {
-                        try
-                        {
-                            var stockData = await _yahooFinanceService.GetStockDataAsync(symbol);
-
-                            if (stockData == null)
-                            {
-                                Console.WriteLine($" Skipping {symbol} update due to API limit.");
-                                continue; 
-                            }
-
-                            var stock = await dbContext.Stocks.FindAsync(symbol);
-
-                            if (stock == null)
-                            {
-                                stock = new Stock
-                                {
-                                    Symbol = symbol,
-                                    LastUpdated = DateTime.UtcNow
-                                };
-                                dbContext.Add(stock);
-                            }
-
-                            stock.CurrentPrice = stockData.CurrentPrice;
-                            stock.Open = stockData.Open;
-                            stock.High = stockData.High;
-                            stock.Low = stockData.Low;
-                            stock.Close = stockData.Close;
-                            stock.Volume = stockData.Volume;
-                            stock.LastUpdated = DateTime.UtcNow;
-
-                            await dbContext.SaveChangesAsync();
-
-                            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Error updating {symbol}: {ex.Message}");
-                        }
-                    }
+                    _ = _yahooFinanceService.GetStockDataAsync(symbol);
                 }
+
                 await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
             }
         }
 
+        private async void OnStockDataReceived(Stock stock)
+        {
+            using var scope = _services.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            try
+            {
+                var existingStock = await dbContext.Stocks.FirstOrDefaultAsync(s => s.Symbol == stock.Symbol);
+                if (existingStock == null)
+                {
+                    dbContext.Add(stock);
+                }
+                else
+                {
+                    existingStock.CurrentPrice = stock.CurrentPrice;
+                    existingStock.Open = stock.Open;
+                    existingStock.High = stock.High;
+                    existingStock.Low = stock.Low;
+                    existingStock.Volume = stock.Volume;
+                    existingStock.LastUpdated = stock.LastUpdated;
+
+                    dbContext.Update(existingStock);
+                }
+
+                await dbContext.SaveChangesAsync();
+                Debug.WriteLine($"Stock {stock.Symbol} updated in the database.");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Database Error: {ex.Message}");
+            }
+        }
     }
 }

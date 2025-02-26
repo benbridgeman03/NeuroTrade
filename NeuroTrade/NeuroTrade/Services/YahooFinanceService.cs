@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using NeuroTrade.Models;
 using Newtonsoft.Json.Linq;
@@ -11,62 +13,71 @@ namespace NeuroTrade.Services
     {
         private readonly HttpClient _httpClient;
 
+        private DateTime dateTime;
+        private decimal open;
+        private decimal high;
+        private decimal low;
+        private decimal close;
+        private long volume;
+
+        public event Action<Stock>? OnStockDataRecieved;
+
+
         public YahooFinanceService()
         {
             _httpClient = new HttpClient();
         }
 
-        public async Task<Stock?> GetStockDataAsync(string symbol)
+        public async Task GetStockDataAsync(string symbol)
         {
-            string url = $"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1mo";
+            string url = $"https://stooq.com/q/l/?s={symbol}&f=sd2t2ohlcv&h&e=csv";
 
-            try
+            using var client = new HttpClient();
+            string csv = await client.GetStringAsync(url);
+
+            Debug.WriteLine("Raw CSV Data:\n" + csv);
+
+            // Parse CSV Data
+            var lines = csv.Split('\n');
+            if (lines.Length > 1)
             {
-                Debug.WriteLine($"Requesting Yahoo Finance API for {symbol}...");
-
-                var response = await _httpClient.GetAsync(url);
-
-                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                try
                 {
-                    Debug.WriteLine($"Yahoo Finance rate limit hit for {symbol}. Retrying in 60 seconds...");
-                    await Task.Delay(TimeSpan.FromSeconds(60));
-                    return null;  
+                    var data = lines[1].Split(',');
+
+                    if (data[3] == "N/D" || data[4] == "N/D" || data[5] == "N/D" || data[6] == "N/D" || data[7] == "N/D")
+                    {
+                        Console.WriteLine("Error: Data contains 'N/D'");
+                    }
+
+                    open = decimal.Parse(data[3], CultureInfo.InvariantCulture);
+                    high = decimal.Parse(data[4], CultureInfo.InvariantCulture);
+                    low = decimal.Parse(data[5], CultureInfo.InvariantCulture);
+                    close = decimal.Parse(data[6], CultureInfo.InvariantCulture);
+                    volume = long.Parse(data[7], CultureInfo.InvariantCulture);
+
+                    var stock = new Stock
+                    {
+                        Symbol = symbol,
+                        CurrentPrice = close,
+                        Close = close,
+                        Open = open,
+                        High = high,
+                        Low = low,
+                        Volume = volume,
+                        LastUpdated = DateTime.Now
+                    };
+
+                    OnStockDataRecieved?.Invoke(stock);
                 }
-
-                response.EnsureSuccessStatusCode();
-
-                var json = JObject.Parse(await response.Content.ReadAsStringAsync());
-
-                var result = json["chart"]?["result"]?.First;
-                if (result == null)
+                catch (Exception ex)
                 {
-                    Debug.WriteLine($"Invalid response for {symbol}. Skipping...");
-                    return null;
+                    Debug.WriteLine(ex);
                 }
-
-                var meta = result["meta"];
-                var indicators = result["indicators"]["quote"].First;
-
-                return new Stock
-                {
-                    Symbol = symbol,
-                    CurrentPrice = meta["regularMarketPrice"]?.Value<decimal>() ?? 0,
-                    Open = indicators["open"].Last?.Value<decimal>() ?? 0,
-                    High = indicators["high"].Last?.Value<decimal>() ?? 0,
-                    Low = indicators["low"].Last?.Value<decimal>() ?? 0,
-                    Close = indicators["close"].Last?.Value<decimal>() ?? 0,
-                    Volume = indicators["volume"].Last?.Value<long>() ?? 0
-                };
             }
-            catch (HttpRequestException ex)
+            else
             {
-                Debug.WriteLine($"Network error while fetching {symbol}: {ex.Message}");
-                return null;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Unexpected error for {symbol}: {ex.Message}");
-                return null;
+                Console.WriteLine("Error: No data found.");
             }
         }
     }
