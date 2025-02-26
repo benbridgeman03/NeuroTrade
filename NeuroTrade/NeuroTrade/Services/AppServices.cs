@@ -10,15 +10,12 @@ namespace NeuroTrade.Services
 {
     public static class AppServices
     {
-        public static IServiceCollection ConfigureServices()
+        public static void ConfigureServices(IServiceCollection services)
         {
-            var services = new ServiceCollection();
-
             services.AddDbContext<AppDbContext>();
-            services.AddHostedService<StockUpdaterService>();
             services.AddSingleton<YahooFinanceService>();
-
-            return services;
+            services.AddHostedService<StockUpdaterService>();
         }
     }
+
 }

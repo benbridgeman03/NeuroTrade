@@ -16,21 +16,12 @@ namespace NeuroTrade
 {
     public partial class App : Application
     {
-        private IHost _host;
-        public static ServiceProvider Services { get; private set; }
+        private static IHost _host;
+        public static IServiceProvider Services => _host?.Services;
 
         public override void Initialize()
         {
             AvaloniaXamlLoader.Load(this);
-
-            var serviceCollection = AppServices.ConfigureServices();
-            Services = serviceCollection.BuildServiceProvider();
-
-            using (var scope = Services.CreateScope())
-            {
-                var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                dbContext.Database.Migrate();
-            }
         }
 
         public override void OnFrameworkInitializationCompleted()
@@ -38,13 +29,20 @@ namespace NeuroTrade
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 DisableAvaloniaDataAnnotationValidation();
+
+                _host = Program.CreateHostBuilder(Environment.GetCommandLineArgs()).Build();
+                _host.Start();
+
+                using (var scope = _host.Services.CreateScope())
+                {
+                    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    dbContext.Database.Migrate();
+                }
+
                 desktop.MainWindow = new MainWindow
                 {
                     DataContext = new MainWindowViewModel(),
                 };
-
-                _host = Program.CreateHostBuilder(Environment.GetCommandLineArgs()).Build();
-                _host.Start();
 
                 desktop.Exit += OnExit;
             }
@@ -68,4 +66,5 @@ namespace NeuroTrade
             }
         }
     }
+
 }
