@@ -1,27 +1,16 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Globalization;
 using System.Net.Http;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using NeuroTrade.Models;
-using Newtonsoft.Json.Linq;
+using YahooFinanceApi;
 
 namespace NeuroTrade.Services
 {
     public class YahooFinanceService
     {
         private readonly HttpClient _httpClient;
-
-        private DateTime dateTime;
-        private decimal open;
-        private decimal high;
-        private decimal low;
-        private decimal close;
-        private long volume;
-
         public event Action<Stock>? OnStockDataRecieved;
-
 
         public YahooFinanceService()
         {
@@ -30,54 +19,96 @@ namespace NeuroTrade.Services
 
         public async Task GetStockDataAsync(string symbol)
         {
-            string url = $"https://stooq.com/q/l/?s={symbol}&f=sd2t2ohlcv&h&e=csv";
-
-            using var client = new HttpClient();
-            string csv = await client.GetStringAsync(url);
-
-            Debug.WriteLine("Raw CSV Data:\n" + csv);
-
-            // Parse CSV Data
-            var lines = csv.Split('\n');
-            if (lines.Length > 1)
+            try
             {
-                try
+                var securities = await Yahoo.Symbols(symbol)
+                    .Fields(
+                        Field.RegularMarketPrice,
+                        Field.RegularMarketOpen,
+                        Field.RegularMarketPreviousClose,
+                        Field.RegularMarketVolume,
+                        Field.RegularMarketDayHigh,
+                        Field.RegularMarketDayLow,
+                        Field.MarketState
+                    )
+                    .QueryAsync();
+
+                var stockData = securities[symbol];
+
+                // Get Market State safely
+                string marketState = SafeGetString(stockData, Field.MarketState, "CLOSED");
+                bool isMarketOpen = marketState == "REGULAR";
+
+                var stock = new Stock
                 {
-                    var data = lines[1].Split(',');
+                    Symbol = symbol,
+                    CurrentPrice = SafeGetDecimal(stockData, Field.RegularMarketPrice),
+                    Close = SafeGetDecimal(stockData, Field.RegularMarketPreviousClose),
+                    Open = SafeGetDecimal(stockData, Field.RegularMarketOpen),
+                    Volume = SafeGetLong(stockData, Field.RegularMarketVolume),
+                    LastUpdated = DateTime.Now
+                };
 
-                    if (data[3] == "N/D" || data[4] == "N/D" || data[5] == "N/D" || data[6] == "N/D" || data[7] == "N/D")
-                    {
-                        Console.WriteLine("Error: Data contains 'N/D'");
-                    }
-
-                    open = decimal.Parse(data[3], CultureInfo.InvariantCulture);
-                    high = decimal.Parse(data[4], CultureInfo.InvariantCulture);
-                    low = decimal.Parse(data[5], CultureInfo.InvariantCulture);
-                    close = decimal.Parse(data[6], CultureInfo.InvariantCulture);
-                    volume = long.Parse(data[7], CultureInfo.InvariantCulture);
-
-                    var stock = new Stock
-                    {
-                        Symbol = symbol,
-                        CurrentPrice = close,
-                        Close = close,
-                        Open = open,
-                        High = high,
-                        Low = low,
-                        Volume = volume,
-                        LastUpdated = DateTime.Now
-                    };
-
-                    OnStockDataRecieved?.Invoke(stock);
-                }
-                catch (Exception ex)
+                if (isMarketOpen)
                 {
-                    Debug.WriteLine(ex);
+                    stock.High = SafeGetDecimal(stockData, Field.RegularMarketDayHigh, stock.High);
+                    stock.Low = SafeGetDecimal(stockData, Field.RegularMarketDayLow, stock.Low);
                 }
+
+                Debug.WriteLine($@"
+            Stock Data:
+            ------------
+            Symbol        : {stock.Symbol}
+            Current Price : {stock.CurrentPrice}
+            Close Price   : {stock.Close}
+            Open Price    : {stock.Open}
+            High Price    : {(isMarketOpen ? stock.High.ToString() : "Unchanged")}
+            Low Price     : {(isMarketOpen ? stock.Low.ToString() : "Unchanged")}
+            Volume        : {stock.Volume}
+            Market State  : {marketState}
+            Last Updated  : {stock.LastUpdated}
+            ");
+
+                OnStockDataRecieved?.Invoke(stock);
             }
-            else
+            catch (Exception ex)
             {
-                Console.WriteLine("Error: No data found.");
+                Debug.WriteLine($"Error getting stock data for {symbol}: {ex.Message}");
+            }
+        }
+
+        private decimal SafeGetDecimal(Security stockData, Field field, decimal defaultValue = 0)
+        {
+            try
+            {
+                return stockData[field] != null ? Convert.ToDecimal(stockData[field]) : defaultValue;
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
+
+        private long SafeGetLong(Security stockData, Field field, long defaultValue = 0)
+        {
+            try
+            {
+                return stockData[field] != null ? Convert.ToInt64(stockData[field]) : defaultValue;
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
+        private string SafeGetString(Security stockData, Field field, string defaultValue = "")
+        {
+            try
+            {
+                return stockData[field]?.ToString() ?? defaultValue;
+            }
+            catch
+            {
+                return defaultValue;
             }
         }
     }

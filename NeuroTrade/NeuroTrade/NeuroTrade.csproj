@@ -35,5 +35,6 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.2" />
     <PackageReference Include="YahooFinance.NET" Version="4.0.0" />
+    <PackageReference Include="YahooFinanceApi" Version="2.3.3" />
   </ItemGroup>
 </Project>

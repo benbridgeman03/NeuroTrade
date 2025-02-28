@@ -14,7 +14,7 @@ namespace NeuroTrade.Services
     {
         private readonly IServiceProvider _services;
         private readonly YahooFinanceService _yahooFinanceService;
-        private readonly string[] _watchlist = { "AAPL.US" };
+        private readonly string[] _watchlist = { "AAPL" };
 
         public StockUpdaterService(IServiceProvider services, YahooFinanceService yahooFinanceService)
         {
@@ -26,7 +26,7 @@ namespace NeuroTrade.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            Console.WriteLine("StockUpdaterService has started!");
+            Debug.WriteLine("StockUpdaterService has started!");
 
             while (!stoppingToken.IsCancellationRequested)
             {
