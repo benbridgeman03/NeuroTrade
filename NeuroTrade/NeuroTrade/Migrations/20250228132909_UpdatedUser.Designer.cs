@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NeuroTrade.Data;
 
@@ -10,9 +11,11 @@ using NeuroTrade.Data;
 namespace NeuroTrade.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250228132909_UpdatedUser")]
+    partial class UpdatedUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.2");
@@ -51,40 +54,6 @@ namespace NeuroTrade.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Stocks");
-                });
-
-            modelBuilder.Entity("NeuroTrade.Models.StockPriceHistory", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("Close")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("High")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("IntervalStart")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("Low")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("Open")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("StockId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<long>("Volume")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StockId");
-
-                    b.ToTable("StockPriceHistories");
                 });
 
             modelBuilder.Entity("NeuroTrade.Models.User", b =>
@@ -143,50 +112,6 @@ namespace NeuroTrade.Migrations
                     b.ToTable("UserStocks");
                 });
 
-            modelBuilder.Entity("NeuroTrade.Models.UserTransaction", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsBuy")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("PricePerShare")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Shares")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("StockId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("TransactionDate")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StockId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("UserTransactions");
-                });
-
-            modelBuilder.Entity("NeuroTrade.Models.StockPriceHistory", b =>
-                {
-                    b.HasOne("NeuroTrade.Models.Stock", "Stock")
-                        .WithMany()
-                        .HasForeignKey("StockId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Stock");
-                });
-
             modelBuilder.Entity("NeuroTrade.Models.UserStock", b =>
                 {
                     b.HasOne("NeuroTrade.Models.Stock", "Stock")
@@ -197,25 +122,6 @@ namespace NeuroTrade.Migrations
 
                     b.HasOne("NeuroTrade.Models.User", "User")
                         .WithMany("Portfolio")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Stock");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("NeuroTrade.Models.UserTransaction", b =>
-                {
-                    b.HasOne("NeuroTrade.Models.Stock", "Stock")
-                        .WithMany()
-                        .HasForeignKey("StockId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("NeuroTrade.Models.User", "User")
-                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

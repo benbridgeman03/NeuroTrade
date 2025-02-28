@@ -10,7 +10,7 @@ namespace NeuroTrade.Services
     public class YahooFinanceService
     {
         private readonly HttpClient _httpClient;
-        public event Action<Stock>? OnStockDataRecieved;
+        public event Action<Stock>? OnStockDataReceived;
 
         public YahooFinanceService()
         {
@@ -55,26 +55,27 @@ namespace NeuroTrade.Services
                 }
 
                 Debug.WriteLine($@"
-            Stock Data:
-            ------------
-            Symbol        : {stock.Symbol}
-            Current Price : {stock.CurrentPrice}
-            Close Price   : {stock.Close}
-            Open Price    : {stock.Open}
-            High Price    : {(isMarketOpen ? stock.High.ToString() : "Unchanged")}
-            Low Price     : {(isMarketOpen ? stock.Low.ToString() : "Unchanged")}
-            Volume        : {stock.Volume}
-            Market State  : {marketState}
-            Last Updated  : {stock.LastUpdated}
-            ");
+                    Stock Data:
+                    ------------
+                    Symbol        : {stock.Symbol}
+                    Current Price : {stock.CurrentPrice}
+                    Close Price   : {stock.Close}
+                    Open Price    : {stock.Open}
+                    High Price    : {(isMarketOpen ? stock.High.ToString() : "Unchanged")}
+                    Low Price     : {(isMarketOpen ? stock.Low.ToString() : "Unchanged")}
+                    Volume        : {stock.Volume}
+                    Market State  : {marketState}
+                    Last Updated  : {stock.LastUpdated}
+                    ");
 
-                OnStockDataRecieved?.Invoke(stock);
+                OnStockDataReceived?.Invoke(stock);
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"Error getting stock data for {symbol}: {ex.Message}");
             }
         }
+
 
         private decimal SafeGetDecimal(Security stockData, Field field, decimal defaultValue = 0)
         {

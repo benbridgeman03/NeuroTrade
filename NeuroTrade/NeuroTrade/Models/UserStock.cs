@@ -12,5 +12,7 @@
 
         public int SharesOwned { get; set; }
         public decimal AveragePurchasePrice { get; set; }
+
+        public decimal CurrentValue => SharesOwned * Stock.CurrentPrice;
     }
 }

@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using System.IO;
 using System.Collections.Generic;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace NeuroTrade.Services
 {
@@ -25,7 +24,7 @@ namespace NeuroTrade.Services
             _services = services;
             _yahooFinanceService = yahooFinanceService;
 
-            _yahooFinanceService.OnStockDataRecieved += OnStockDataReceived;
+            _yahooFinanceService.OnStockDataReceived += OnStockDataReceived;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -61,7 +60,7 @@ namespace NeuroTrade.Services
                 var existingStock = await dbContext.Stocks.FirstOrDefaultAsync(s => s.Symbol == stock.Symbol);
                 if (existingStock == null)
                 {
-                    dbContext.Add(stock);
+                    dbContext.Stocks.Add(stock);
                 }
                 else
                 {
@@ -72,7 +71,40 @@ namespace NeuroTrade.Services
                     existingStock.Volume = stock.Volume;
                     existingStock.LastUpdated = stock.LastUpdated;
 
-                    dbContext.Update(existingStock);
+                    dbContext.Stocks.Update(existingStock);
+                }
+
+                var intervalStart = DateTime.UtcNow.AddMinutes(-(DateTime.UtcNow.Minute % 5))
+                                               .AddSeconds(-DateTime.UtcNow.Second)
+                                               .AddMilliseconds(-DateTime.UtcNow.Millisecond);
+
+                var existingOHLC = await dbContext.StockPriceHistories
+                    .FirstOrDefaultAsync(h => h.StockId == existingStock.Id && h.IntervalStart == intervalStart);
+
+                if (existingOHLC == null)
+                {
+                    var newOHLC = new StockPriceHistory
+                    {
+                        StockId = existingStock.Id,
+                        Stock = existingStock,
+                        Open = stock.Open,
+                        High = stock.High,
+                        Low = stock.Low,
+                        Close = stock.CurrentPrice,
+                        Volume = stock.Volume,
+                        IntervalStart = intervalStart
+                    };
+
+                    dbContext.StockPriceHistories.Add(newOHLC);
+                }
+                else
+                {
+                    existingOHLC.High = Math.Max(existingOHLC.High, stock.High);
+                    existingOHLC.Low = Math.Min(existingOHLC.Low, stock.Low);
+                    existingOHLC.Close = stock.CurrentPrice;
+                    existingOHLC.Volume += stock.Volume;
+
+                    dbContext.StockPriceHistories.Update(existingOHLC);
                 }
 
                 await dbContext.SaveChangesAsync();
@@ -83,6 +115,7 @@ namespace NeuroTrade.Services
                 Debug.WriteLine($"Database Error: {ex.Message}");
             }
         }
+
 
         private List<string> ParseWatchList()
         {
