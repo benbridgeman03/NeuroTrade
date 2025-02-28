@@ -35,7 +35,6 @@ namespace NeuroTrade.Services
 
                 var stockData = securities[symbol];
 
-                // Get Market State safely
                 string marketState = SafeGetString(stockData, Field.MarketState, "CLOSED");
                 bool isMarketOpen = marketState == "REGULAR";
 

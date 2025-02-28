@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 using NeuroTrade.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
+using System.IO;
+using System.Collections.Generic;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace NeuroTrade.Services
 {
@@ -14,7 +17,8 @@ namespace NeuroTrade.Services
     {
         private readonly IServiceProvider _services;
         private readonly YahooFinanceService _yahooFinanceService;
-        private readonly string[] _watchlist = { "AAPL" };
+        private List<string> _watchlist;
+        private readonly string filePath = "D:\\Projects\\Other\\Software\\New\\NeuroTrade\\NeuroTrade\\NeuroTrade\\Data\\Watchlist.txt";
 
         public StockUpdaterService(IServiceProvider services, YahooFinanceService yahooFinanceService)
         {
@@ -30,9 +34,17 @@ namespace NeuroTrade.Services
 
             while (!stoppingToken.IsCancellationRequested)
             {
+                _watchlist = ParseWatchList();
+
+                foreach(var element in _watchlist)
+                {
+                    Debug.WriteLine($"Stock {element} added to watchlist.");
+                }
+
                 foreach (var symbol in _watchlist)
                 {
                     _ = _yahooFinanceService.GetStockDataAsync(symbol);
+                    await Task.Delay(500);
                 }
 
                 await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
@@ -70,6 +82,13 @@ namespace NeuroTrade.Services
             {
                 Debug.WriteLine($"Database Error: {ex.Message}");
             }
+        }
+
+        private List<string> ParseWatchList()
+        {
+            string symbols = File.ReadAllText(filePath);
+            List<string> stockSymbols = new List<string>(symbols.Split(", ", StringSplitOptions.RemoveEmptyEntries));
+            return stockSymbols;
         }
     }
 }
