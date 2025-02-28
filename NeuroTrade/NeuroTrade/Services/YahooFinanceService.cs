@@ -77,7 +77,7 @@ namespace NeuroTrade.Services
         }
 
 
-        private decimal SafeGetDecimal(Security stockData, Field field, decimal defaultValue = 0)
+        private static decimal SafeGetDecimal(Security stockData, Field field, decimal defaultValue = 0)
         {
             try
             {
@@ -89,7 +89,7 @@ namespace NeuroTrade.Services
             }
         }
 
-        private long SafeGetLong(Security stockData, Field field, long defaultValue = 0)
+        private static long SafeGetLong(Security stockData, Field field, long defaultValue = 0)
         {
             try
             {
@@ -100,7 +100,7 @@ namespace NeuroTrade.Services
                 return defaultValue;
             }
         }
-        private string SafeGetString(Security stockData, Field field, string defaultValue = "")
+        private static string SafeGetString(Security stockData, Field field, string defaultValue = "")
         {
             try
             {

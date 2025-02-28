@@ -16,5 +16,4 @@ namespace NeuroTrade.Models
 
         public DateTime IntervalStart { get; set; }
     }
-
 }
